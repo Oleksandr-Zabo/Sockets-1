@@ -4,40 +4,60 @@ using System.Text;
 
 namespace MainServer;
 
-class MainServer
+class AsyncServer
 {
-    static void Main()
+    static async Task Main()
     {
-        IPAddress ip = IPAddress.Any;
-        IPEndPoint ep = new IPEndPoint(ip, 8080);
-
-        Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        serverSocket.Bind(ep);
-        serverSocket.Listen(5);
-
-        Console.WriteLine("Server is waiting for connections...");
-
-        while (true)
+        try
         {
-            Socket clientSocket = serverSocket.Accept();
-            Thread clientThread = new Thread(HandleClient);
-            clientThread.Start(clientSocket);
+            IPAddress ip = IPAddress.Any;
+            IPEndPoint ep = new IPEndPoint(ip, 8080);
+
+            Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            serverSocket.Bind(ep);
+            serverSocket.Listen(5);
+
+            Console.WriteLine("Server is waiting for connections...");
+
+            while (true)
+            {
+                try
+                {
+                    Socket clientSocket = await serverSocket.AcceptAsync();
+                    _ = HandleClientAsync(clientSocket);
+                }
+                catch (SocketException ex)
+                {
+                    Console.WriteLine($"Error accepting connection: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Server error: {ex.Message}");
         }
     }
 
-    static void HandleClient(object obj)
+    static async Task HandleClientAsync(Socket clientSocket)
     {
-        Socket clientSocket = (Socket)obj;
-        byte[] buffer = new byte[1024];
+        try
+        {
+            byte[] buffer = new byte[1024];
+            int received = await clientSocket.ReceiveAsync(buffer, SocketFlags.None);
+            string receivedMessage = Encoding.UTF8.GetString(buffer, 0, received);
+            Console.WriteLine($"At {DateTime.Now:HH:mm} from {((IPEndPoint)clientSocket.RemoteEndPoint!)?.Address} received: {receivedMessage}");
 
-        int received = clientSocket.Receive(buffer);
-        string receivedMessage = Encoding.UTF8.GetString(buffer, 0, received);
-        Console.WriteLine($"At {DateTime.Now:HH:mm} from {((IPEndPoint)clientSocket.RemoteEndPoint!)?.Address} received: {receivedMessage}");
-
-        string response = "Hello, Client!";
-        clientSocket.Send(Encoding.UTF8.GetBytes(response));
-
-        clientSocket.Shutdown(SocketShutdown.Both);
-        clientSocket.Close();
+            string response = "Hello, Client!";
+            await clientSocket.SendAsync(Encoding.UTF8.GetBytes(response), SocketFlags.None);
+        }
+        catch (SocketException ex)
+        {
+            Console.WriteLine($"Client handling error: {ex.Message}");
+        }
+        finally
+        {
+            clientSocket.Shutdown(SocketShutdown.Both);
+            clientSocket.Close();
+        }
     }
 }
