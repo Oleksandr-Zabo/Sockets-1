@@ -1,46 +1,37 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using System.Text;
 
 namespace Client;
 
-class Program
+class Client
 {
     static void Main()
     {
-        IPAddress ip = IPAddress.Parse("192.168.0.10");
-        IPEndPoint ep = new IPEndPoint(ip, 80);
-        Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         try
         {
-            s.Connect(ep);
-            if (s.Connected)
-            {
-                string strSend = "GET / HTTP/1.1\r\nHost: 192.168.0.10\r\nConnection: close\r\n\r\n";
-                s.Send(System.Text.Encoding.ASCII.GetBytes(strSend));
-                byte[] buffer = new byte[1024];
-                int l;
-                do 
-                {
-                    l = s.Receive(buffer);
-                    Console.WriteLine(System.Text.Encoding.ASCII.GetString(buffer, 0, l));
-                } while (l > 0);
-            }
-            else
-            {
-                Console.WriteLine("Not connected");
-            }
+            IPAddress ip = IPAddress.Parse("127.0.0.1");
+            IPEndPoint ep = new IPEndPoint(ip, 8080);
+
+            Socket clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            clientSocket.Connect(ep);
+
+            Console.Write("Enter 'time' or 'date': ");
+            string request = Console.ReadLine()?.Trim().ToLower() ?? "invalid";
+            clientSocket.Send(Encoding.UTF8.GetBytes(request));
+
+            byte[] buffer = new byte[1024];
+            int received = clientSocket.Receive(buffer);
+            string response = Encoding.UTF8.GetString(buffer, 0, received);
+
+            Console.WriteLine($"Server response: {response}");
+
+            clientSocket.Shutdown(SocketShutdown.Both);
+            clientSocket.Close();
         }
         catch (SocketException ex)
         {
-            Console.WriteLine($"Error client: {ex.Message}");
-        }
-        finally
-        {
-            if (s.Connected)
-            {
-                s.Shutdown(SocketShutdown.Both);
-            }
-            s.Close();
+            Console.WriteLine($"Client error: {ex.Message}");
         }
     }
 }
