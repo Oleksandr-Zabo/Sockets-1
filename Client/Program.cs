@@ -19,7 +19,7 @@ class Program
                 s.Send(System.Text.Encoding.ASCII.GetBytes(strSend));
                 byte[] buffer = new byte[1024];
                 int l;
-                do
+                do 
                 {
                     l = s.Receive(buffer);
                     Console.WriteLine(System.Text.Encoding.ASCII.GetString(buffer, 0, l));
