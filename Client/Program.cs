@@ -4,9 +4,9 @@ using System.Text;
 
 namespace Client;
 
-class Client
+class AsyncClient
 {
-    static void Main()
+    static async Task Main()
     {
         try
         {
@@ -14,14 +14,14 @@ class Client
             IPEndPoint ep = new IPEndPoint(ip, 8080);
 
             Socket clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            clientSocket.Connect(ep);
+            await clientSocket.ConnectAsync(ep);
 
             Console.Write("Enter 'time' or 'date': ");
             string request = Console.ReadLine()?.Trim().ToLower() ?? "invalid";
-            clientSocket.Send(Encoding.UTF8.GetBytes(request));
+            await clientSocket.SendAsync(Encoding.UTF8.GetBytes(request), SocketFlags.None);
 
             byte[] buffer = new byte[1024];
-            int received = clientSocket.Receive(buffer);
+            int received = await clientSocket.ReceiveAsync(buffer, SocketFlags.None);
             string response = Encoding.UTF8.GetString(buffer, 0, received);
 
             Console.WriteLine($"Server response: {response}");
@@ -32,6 +32,10 @@ class Client
         catch (SocketException ex)
         {
             Console.WriteLine($"Client error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Unexpected error: {ex.Message}");
         }
     }
 }
