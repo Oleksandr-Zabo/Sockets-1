@@ -1,46 +1,28 @@
-﻿using System.Net;
+﻿using System;
+using System.Net;
 using System.Net.Sockets;
+using System.Text;
 
-namespace Client;
-
-class Program
+class Client
 {
     static void Main()
     {
-        IPAddress ip = IPAddress.Parse("192.168.0.10");
-        IPEndPoint ep = new IPEndPoint(ip, 80);
-        Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        try
-        {
-            s.Connect(ep);
-            if (s.Connected)
-            {
-                string strSend = "GET / HTTP/1.1\r\nHost: 192.168.0.10\r\nConnection: close\r\n\r\n";
-                s.Send(System.Text.Encoding.ASCII.GetBytes(strSend));
-                byte[] buffer = new byte[1024];
-                int l;
-                do 
-                {
-                    l = s.Receive(buffer);
-                    Console.WriteLine(System.Text.Encoding.ASCII.GetString(buffer, 0, l));
-                } while (l > 0);
-            }
-            else
-            {
-                Console.WriteLine("Not connected");
-            }
-        }
-        catch (SocketException ex)
-        {
-            Console.WriteLine($"Error client: {ex.Message}");
-        }
-        finally
-        {
-            if (s.Connected)
-            {
-                s.Shutdown(SocketShutdown.Both);
-            }
-            s.Close();
-        }
+        IPAddress ip = IPAddress.Parse("127.0.0.1");
+        IPEndPoint ep = new IPEndPoint(ip, 8080);
+
+        Socket clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        clientSocket.Connect(ep);
+
+        string message = "Hello, Server!";
+        clientSocket.Send(Encoding.UTF8.GetBytes(message));
+
+        byte[] buffer = new byte[1024];
+        int received = clientSocket.Receive(buffer);
+        string receivedMessage = Encoding.UTF8.GetString(buffer, 0, received);
+
+        Console.WriteLine($"At {DateTime.Now:HH:mm} from {((IPEndPoint)clientSocket.RemoteEndPoint).Address} received: {receivedMessage}");
+
+        clientSocket.Shutdown(SocketShutdown.Both);
+        clientSocket.Close();
     }
 }

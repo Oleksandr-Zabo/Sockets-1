@@ -1,33 +1,43 @@
-﻿using System.Globalization;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
+using System.Text;
 
 namespace MainServer;
 
-class Program
+class MainServer
 {
     static void Main()
     {
-        Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
-        IPAddress ip = IPAddress.Parse("192.168.0.10");
-        IPEndPoint ep = new IPEndPoint(ip, 80);
-        s.Bind(ep);
-        s.Listen(10);
+        IPAddress ip = IPAddress.Any;
+        IPEndPoint ep = new IPEndPoint(ip, 8080);
 
-        try
+        Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        serverSocket.Bind(ep);
+        serverSocket.Listen(5);
+
+        Console.WriteLine("Server is waiting for connections...");
+
+        while (true)
         {
-            while (true)
-            {
-                Socket ns = s.Accept();
-                Console.WriteLine(ns.RemoteEndPoint?.ToString());
-                ns.Send(System.Text.Encoding.Unicode.GetBytes(DateTime.Now.ToString(CultureInfo.InvariantCulture)));
-                ns.Shutdown(SocketShutdown.Both);
-                ns.Close();
-            }
+            Socket clientSocket = serverSocket.Accept();
+            Thread clientThread = new Thread(HandleClient);
+            clientThread.Start(clientSocket);
         }
-        catch (SocketException ex)
-        {
-            Console.WriteLine($"Error server: {ex.Message}");
-        }
+    }
+
+    static void HandleClient(object obj)
+    {
+        Socket clientSocket = (Socket)obj;
+        byte[] buffer = new byte[1024];
+
+        int received = clientSocket.Receive(buffer);
+        string receivedMessage = Encoding.UTF8.GetString(buffer, 0, received);
+        Console.WriteLine($"At {DateTime.Now:HH:mm} from {((IPEndPoint)clientSocket.RemoteEndPoint!)?.Address} received: {receivedMessage}");
+
+        string response = "Hello, Client!";
+        clientSocket.Send(Encoding.UTF8.GetBytes(response));
+
+        clientSocket.Shutdown(SocketShutdown.Both);
+        clientSocket.Close();
     }
 }
